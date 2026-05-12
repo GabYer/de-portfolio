@@ -1,41 +1,61 @@
-import sys
+import requests
 import logging
-from db import get_connection
-from sources.crypto_api import ingest_crypto
-from sources.nbk_forex import ingest_forex
+from datetime import datetime, timezone
+from db import get_connection, bulk_insert, log_run
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s  %(levelname)-8s  %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
+log = logging.getLogger(__name__)
+
+CITIES = [
+    {"name": "Астана",  "lat": 51.1801, "lon": 71.4460},
+    {"name": "Алматы",  "lat": 43.2220, "lon": 76.8512},
+    {"name": "Шымкент", "lat": 42.3000, "lon": 69.6000},
+]
+
+BASE_URL = (
+    "https://api.open-meteo.com/v1/forecast"
+    "?latitude={lat}&longitude={lon}"
+    "&current=temperature_2m,relative_humidity_2m,"
+    "wind_speed_10m,precipitation,weather_code"
+    "&timezone=Asia%2FAlmaty"
 )
-log = logging.getLogger("run_all")
 
-def main():
-    log.info("===== Старт ingestion =====")
-    conn = get_connection()
-    log.info("Подключение к Neon: OK")
+def ingest_weather(conn=None):
+    if conn is None:
+        conn = get_connection()
 
-    results = {}
+    rows = []
+    now = datetime.now(timezone.utc)
 
-    try:
-        results["crypto"] = ingest_crypto(conn)
-    except Exception as e:
-        log.error("crypto ОШИБКА: %s", e)
-        results["crypto"] = 0
+    for city in CITIES:
+        url = BASE_URL.format(lat=city["lat"], lon=city["lon"])
+        try:
+            resp = requests.get(url, timeout=15)
+            resp.raise_for_status()
+            data = resp.json()
+        except Exception as e:
+            log.warning("weather %s ошибка: %s", city["name"], e)
+            continue
 
-    try:
-        results["forex_nbk"] = ingest_forex(conn)
-    except Exception as e:
-        log.error("forex_nbk ОШИБКА: %s", e)
-        results["forex_nbk"] = 0
+        cur = data.get("current", {})
+        rows.append((
+            now,
+            city["name"],
+            city["lat"],
+            city["lon"],
+            cur.get("temperature_2m"),
+            cur.get("relative_humidity_2m"),
+            cur.get("wind_speed_10m"),
+            cur.get("precipitation"),
+            cur.get("weather_code"),
+        ))
 
-    conn.close()
+    cols = [
+        "observed_at", "city", "latitude", "longitude",
+        "temp_celsius", "humidity_pct", "wind_speed_ms",
+        "precipitation", "weather_code"
+    ]
 
-    log.info("===== Итог =====")
-    for name, n in results.items():
-        log.info("  %-15s  %d строк", name, n)
-    log.info("================")
-
-if __name__ == "__main__":
-    main()
+    n = bulk_insert(conn, "raw.weather_astana", rows, cols)
+    log_run(conn, "weather", "success", rows=n)
+    log.info("weather: загружено %d городов", n)
+    return n
