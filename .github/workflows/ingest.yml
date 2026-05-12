@@ -1,0 +1,29 @@
+name: Data Ingestion
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"   # каждые 6 часов
+  workflow_dispatch:          # кнопка ручного запуска
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Получить код из репозитория
+        uses: actions/checkout@v4
+
+      - name: Установить Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Установить библиотеки
+        run: pip install -r requirements.txt
+
+      - name: Запустить ingestion
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          cd ingestion
+          python run_all.py
