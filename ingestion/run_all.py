@@ -1,4 +1,3 @@
-import sys
 import logging
 from db import get_connection
 from sources.crypto_api      import ingest_crypto
