@@ -4,6 +4,7 @@ from sources.crypto_api      import ingest_crypto
 from sources.nbk_forex       import ingest_forex
 from sources.weather_api     import ingest_weather
 from sources.event_generator import ingest_events
+from sources.tengri_scraper  import ingest_tengri
 
 logging.basicConfig(
     level=logging.INFO,
@@ -17,6 +18,7 @@ SOURCES = [
     ("forex_nbk",       ingest_forex),
     ("weather",         ingest_weather),
     ("event_generator", ingest_events),
+    ("tengri_scraper",  ingest_tengri),
 ]
 
 def main():
