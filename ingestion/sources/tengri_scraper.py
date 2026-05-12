@@ -1,5 +1,6 @@
 import requests
 import logging
+import re
 from datetime import datetime, timezone
 from bs4 import BeautifulSoup
 from db import get_connection, bulk_insert, log_run
@@ -17,66 +18,107 @@ HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
 }
 
+# Категории по URL — определяем по части пути
+URL_CATEGORY_MAP = {
+    "kazakhstan_news": "Казахстан",
+    "economics_business": "Экономика",
+    "world_news": "Мир",
+    "sport": "Спорт",
+    "politics": "Политика",
+    "crime": "Происшествия",
+}
+
+def _detect_category(href, default):
+    for key, cat in URL_CATEGORY_MAP.items():
+        if key in href:
+            return cat
+    return default
+
+def _parse_date(text):
+    """Парсим 'Сегодня 01:43' или 'Вчера 22:14' или '12 мая 10:30'"""
+    now = datetime.now(timezone.utc)
+    text = text.strip()
+    try:
+        if text.startswith("Сегодня"):
+            time_part = text.replace("Сегодня", "").strip()
+            h, m = map(int, time_part.split(":"))
+            return now.replace(hour=h, minute=m, second=0, microsecond=0)
+        if text.startswith("Вчера"):
+            from datetime import timedelta
+            time_part = text.replace("Вчера", "").strip()
+            h, m = map(int, time_part.split(":"))
+            yesterday = now - timedelta(days=1)
+            return yesterday.replace(hour=h, minute=m, second=0, microsecond=0)
+    except Exception:
+        pass
+    return now
+
 def _parse_section(section_name, url):
     try:
         resp = requests.get(BASE_URL + url, headers=HEADERS, timeout=15)
         resp.raise_for_status()
     except Exception as e:
-        log.warning("tengri [%s] ошибка: %s", section_name, e)
+        log.warning("tengri [%s] ошибка запроса: %s", section_name, e)
         return []
 
     soup = BeautifulSoup(resp.text, "lxml")
-    items = soup.select(".content-main-list-item, .news-list-item, li.item")
-    if not items:
-        # Запасной селектор
-        items = soup.select("article, .tn-news-item")
-
     rows = []
-    for item in items[:30]:
-        try:
-            # Заголовок
-            title_tag = item.select_one("a.item-title, .title a, h2 a, h3 a, a[href*='/news/']")
-            if not title_tag:
-                continue
-            title = title_tag.get_text(strip=True)
-            href  = title_tag.get("href", "")
-            if not href.startswith("http"):
-                href = BASE_URL + href
-            if not title or len(title) < 5:
-                continue
+    seen_urls = set()
 
-            # Дата
-            time_tag = item.select_one("time, .date, .time, [datetime]")
-            pub_date = None
-            if time_tag:
-                dt_str = time_tag.get("datetime") or time_tag.get_text(strip=True)
-                try:
-                    pub_date = datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
-                except Exception:
-                    pub_date = datetime.now(timezone.utc)
+    # Ищем все ссылки на новости — /kazakhstan_news/, /news/, /world_news/ и т.д.
+    news_pattern = re.compile(
+        r"/(kazakhstan_news|world_news|economics_business|sport|politics|crime|news)/[a-z0-9_-]+-\d+"
+    )
 
-            # Описание
-            desc_tag = item.select_one(".item-text, .announce, p")
-            description = desc_tag.get_text(strip=True)[:500] if desc_tag else None
+    for a_tag in soup.find_all("a", href=True):
+        href = a_tag["href"]
 
-            rows.append((
-                href,
-                title,
-                section_name,
-                description,
-                pub_date or datetime.now(timezone.utc),
-                datetime.now(timezone.utc),
-            ))
-        except Exception as e:
-            log.debug("Пропускаем элемент: %s", e)
+        # Только ссылки на статьи (с числовым ID в конце)
+        if not news_pattern.search(href):
             continue
+
+        # Полный URL
+        full_url = href if href.startswith("http") else BASE_URL + href
+
+        if full_url in seen_urls:
+            continue
+        seen_urls.add(full_url)
+
+        # Заголовок — текст ссылки, убираем иконки
+        title = a_tag.get_text(strip=True)
+        if not title or len(title) < 10:
+            continue
+
+        # Дата — ищем ближайший элемент с датой рядом с новостью
+        pub_date = datetime.now(timezone.utc)
+        parent = a_tag.find_parent()
+        if parent:
+            # Ищем текст с датой в родительском блоке
+            for sibling in parent.find_all(string=True):
+                s = sibling.strip()
+                if s.startswith("Сегодня") or s.startswith("Вчера"):
+                    pub_date = _parse_date(s)
+                    break
+
+        category = _detect_category(href, section_name)
+
+        rows.append((
+            full_url,
+            title[:500],
+            category,
+            None,
+            pub_date,
+            datetime.now(timezone.utc),
+        ))
+
+        if len(rows) >= 30:
+            break
 
     log.info("tengri [%s]: найдено %d новостей", section_name, len(rows))
     return rows
 
 
 COLS = ["url", "title", "category", "description", "published_at", "scraped_at"]
-
 TABLE = "raw.tengri_news"
 
 DDL = """
@@ -97,7 +139,6 @@ def ingest_tengri(conn=None):
     if conn is None:
         conn = get_connection()
 
-    # Создаём таблицу если не существует
     with conn.cursor() as cur:
         cur.execute(DDL)
     conn.commit()
@@ -111,7 +152,6 @@ def ingest_tengri(conn=None):
         log_run(conn, "tengri_scraper", "failed", error="Нет данных")
         return 0
 
-    # UNIQUE(url) — дубликаты игнорируются автоматически
     n = bulk_insert(conn, TABLE, all_rows, COLS)
     log_run(conn, "tengri_scraper", "success", rows=n)
     log.info("tengri: загружено %d новостей", n)
