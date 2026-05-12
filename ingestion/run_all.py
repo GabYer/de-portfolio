@@ -1,8 +1,10 @@
 import sys
 import logging
 from db import get_connection
-from sources.crypto_api import ingest_crypto
-from sources.nbk_forex import ingest_forex
+from sources.crypto_api      import ingest_crypto
+from sources.nbk_forex       import ingest_forex
+from sources.weather_api     import ingest_weather
+from sources.event_generator import ingest_events
 
 logging.basicConfig(
     level=logging.INFO,
@@ -11,30 +13,31 @@ logging.basicConfig(
 )
 log = logging.getLogger("run_all")
 
+SOURCES = [
+    ("crypto",          ingest_crypto),
+    ("forex_nbk",       ingest_forex),
+    ("weather",         ingest_weather),
+    ("event_generator", ingest_events),
+]
+
 def main():
     log.info("===== Старт ingestion =====")
     conn = get_connection()
     log.info("Подключение к Neon: OK")
 
     results = {}
-
-    try:
-        results["crypto"] = ingest_crypto(conn)
-    except Exception as e:
-        log.error("crypto ОШИБКА: %s", e)
-        results["crypto"] = 0
-
-    try:
-        results["forex_nbk"] = ingest_forex(conn)
-    except Exception as e:
-        log.error("forex_nbk ОШИБКА: %s", e)
-        results["forex_nbk"] = 0
+    for name, fn in SOURCES:
+        try:
+            results[name] = fn(conn)
+        except Exception as e:
+            log.error("%-18s ОШИБКА: %s", name, e)
+            results[name] = 0
 
     conn.close()
 
     log.info("===== Итог =====")
     for name, n in results.items():
-        log.info("  %-15s  %d строк", name, n)
+        log.info("  %-18s  %d строк", name, n)
     log.info("================")
 
 if __name__ == "__main__":
