@@ -14,8 +14,8 @@
 ┌─────────────────────────────────────────────────────────────┐
 │                      DATA SOURCES                           │
 │                                                             │
-│  CoinGecko API   НБК Казахстан   Open-Meteo   Tengrinews   │
-│  (BTC/ETH/BNB)   (KZT курсы)     (погода)     (новости)    │
+│  CoinGecko API   НБК Казахстан   Open-Meteo   Tengrinews    │
+│  (BTC/ETH/BNB)   (KZT курсы)     (погода)     (новости)     │
 │                                                             │
 │                    Event Generator                          │
 │              (транзакции / клики / IoT)                     │
@@ -33,23 +33,23 @@
 ┌─────────────────────────────────────────────────────────────┐
 │              PostgreSQL DWH — Neon.tech                     │
 │                                                             │
-│  ┌─────────┐    ┌──────────┐    ┌──────────────────────┐   │
-│  │  raw.*  │ →  │staging.* │ →  │       mart.*         │   │
-│  │         │    │          │    │                      │   │
-│  │ as-is   │    │ cleaned  │    │ daily_crypto_kzt     │   │
-│  │ data    │    │ deduped  │    │ forex_trend          │   │
-│  │         │    │ typed    │    │ txn_hourly           │   │
-│  └─────────┘    └──────────┘    │ fraud_signals        │   │
-│                                 │ news_by_category     │   │
-│  meta.pipeline_runs (logs)      └──────────────────────┘   │
+│  ┌─────────┐    ┌──────────┐    ┌──────────────────────┐    │
+│  │  raw.*  │ →  │staging.* │ →  │       mart.*         │    │
+│  │         │    │          │    │                      │    │
+│  │ as-is   │    │ cleaned  │    │ daily_crypto_kzt     │    │
+│  │ data    │    │ deduped  │    │ forex_trend          │    │
+│  │         │    │ typed    │    │ txn_hourly           │    │
+│  └─────────┘    └──────────┘    │ fraud_signals        │    │
+│                                 │ news_by_category     │    │
+│  meta.pipeline_runs (logs)      └──────────────────────┘    │
 └──────────────────────────┬──────────────────────────────────┘
                            │
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
 │           Apache Superset — Railway.app                     │
 │                                                             │
-│   📈 Крипто в KZT    💱 Курсы валют    🛒 Транзакции        │
-│   📰 Новости КЗ      🚨 Fraud Signals                       │
+│   📈 Крипто в KZT    💱 Курсы валют    🛒 Транзакции       │
+│   📰 Новости КЗ      🚨 Fraud Signals                      │
 └─────────────────────────────────────────────────────────────┘
 ```
 
