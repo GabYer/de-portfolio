@@ -1,0 +1,22 @@
+name: Staging Transform
+
+on:
+  schedule:
+    - cron: "30 */6 * * *"   # через 30 минут после ingest
+  workflow_dispatch:
+
+jobs:
+  transform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Установить psql
+        run: sudo apt-get install -y postgresql-client
+
+      - name: Запустить трансформации
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          psql "$DATABASE_URL" -f sql/migrations/002_staging_transform.sql
+          echo "Трансформации выполнены успешно"
