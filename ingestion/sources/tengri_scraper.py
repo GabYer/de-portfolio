@@ -1,111 +1,88 @@
 import requests
 import logging
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from bs4 import BeautifulSoup
 from db import get_connection, bulk_insert, log_run
 
 log = logging.getLogger(__name__)
 
 BASE_URL = "https://tengrinews.kz"
+
 SECTIONS = [
     ("Новости",   "/news/"),
     ("Экономика", "/economics_business/"),
-    ("Спорт",     "/sport/"),
+    ("Спорт",     "https://tengrisport.kz/"),
 ]
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
 }
 
-# Категории по URL — определяем по части пути
-URL_CATEGORY_MAP = {
-    "kazakhstan_news": "Казахстан",
-    "economics_business": "Экономика",
-    "world_news": "Мир",
-    "sport": "Спорт",
-    "politics": "Политика",
-    "crime": "Происшествия",
-}
-
-def _detect_category(href, default):
-    for key, cat in URL_CATEGORY_MAP.items():
-        if key in href:
-            return cat
-    return default
+# Любая ссылка на статью — содержит слово и цифровой ID в конце
+ARTICLE_RE = re.compile(r"/[a-z_]+-\d{4,}/?$")
 
 def _parse_date(text):
-    """Парсим 'Сегодня 01:43' или 'Вчера 22:14' или '12 мая 10:30'"""
     now = datetime.now(timezone.utc)
-    text = text.strip()
+    text = (text or "").strip()
     try:
         if text.startswith("Сегодня"):
-            time_part = text.replace("Сегодня", "").strip()
-            h, m = map(int, time_part.split(":"))
+            h, m = map(int, text.replace("Сегодня", "").strip().split(":"))
             return now.replace(hour=h, minute=m, second=0, microsecond=0)
         if text.startswith("Вчера"):
-            from datetime import timedelta
-            time_part = text.replace("Вчера", "").strip()
-            h, m = map(int, time_part.split(":"))
-            yesterday = now - timedelta(days=1)
-            return yesterday.replace(hour=h, minute=m, second=0, microsecond=0)
+            h, m = map(int, text.replace("Вчера", "").strip().split(":"))
+            return (now - timedelta(days=1)).replace(hour=h, minute=m, second=0, microsecond=0)
     except Exception:
         pass
     return now
 
 def _parse_section(section_name, url):
+    # Спорт — отдельный поддомен
+    full_url = url if url.startswith("http") else BASE_URL + url
     try:
-        resp = requests.get(BASE_URL + url, headers=HEADERS, timeout=15)
+        resp = requests.get(full_url, headers=HEADERS, timeout=20)
         resp.raise_for_status()
     except Exception as e:
-        log.warning("tengri [%s] ошибка запроса: %s", section_name, e)
+        log.warning("tengri [%s] ошибка: %s", section_name, e)
         return []
 
     soup = BeautifulSoup(resp.text, "lxml")
     rows = []
-    seen_urls = set()
+    seen = set()
 
-    # Ищем все ссылки на новости — /kazakhstan_news/, /news/, /world_news/ и т.д.
-    news_pattern = re.compile(
-        r"/(kazakhstan_news|world_news|economics_business|sport|politics|crime|news)/[a-z0-9_-]+-\d+"
-    )
+    for a in soup.find_all("a", href=True):
+        href = a["href"]
 
-    for a_tag in soup.find_all("a", href=True):
-        href = a_tag["href"]
-
-        # Только ссылки на статьи (с числовым ID в конце)
-        if not news_pattern.search(href):
+        # Фильтр — только ссылки на статьи
+        if not ARTICLE_RE.search(href):
             continue
 
-        # Полный URL
-        full_url = href if href.startswith("http") else BASE_URL + href
-
-        if full_url in seen_urls:
+        # Пропускаем служебные ссылки
+        if any(x in href for x in ["/tag/", "/page/", "/user/", "javascript", "#"]):
             continue
-        seen_urls.add(full_url)
 
-        # Заголовок — текст ссылки, убираем иконки
-        title = a_tag.get_text(strip=True)
+        full = href if href.startswith("http") else BASE_URL + href
+        if full in seen:
+            continue
+        seen.add(full)
+
+        title = a.get_text(strip=True)
         if not title or len(title) < 10:
             continue
 
-        # Дата — ищем ближайший элемент с датой рядом с новостью
+        # Ищем дату рядом
         pub_date = datetime.now(timezone.utc)
-        parent = a_tag.find_parent()
-        if parent:
-            # Ищем текст с датой в родительском блоке
-            for sibling in parent.find_all(string=True):
-                s = sibling.strip()
-                if s.startswith("Сегодня") or s.startswith("Вчера"):
-                    pub_date = _parse_date(s)
+        container = a.find_parent("li") or a.find_parent("div") or a.find_parent("article")
+        if container:
+            for txt in container.stripped_strings:
+                if txt.startswith("Сегодня") or txt.startswith("Вчера"):
+                    pub_date = _parse_date(txt)
                     break
 
-        category = _detect_category(href, section_name)
-
         rows.append((
-            full_url,
+            full,
             title[:500],
-            category,
+            section_name,
             None,
             pub_date,
             datetime.now(timezone.utc),
@@ -118,7 +95,7 @@ def _parse_section(section_name, url):
     return rows
 
 
-COLS = ["url", "title", "category", "description", "published_at", "scraped_at"]
+COLS  = ["url", "title", "category", "description", "published_at", "scraped_at"]
 TABLE = "raw.tengri_news"
 
 DDL = """
@@ -145,8 +122,7 @@ def ingest_tengri(conn=None):
 
     all_rows = []
     for section_name, url in SECTIONS:
-        rows = _parse_section(section_name, url)
-        all_rows.extend(rows)
+        all_rows.extend(_parse_section(section_name, url))
 
     if not all_rows:
         log_run(conn, "tengri_scraper", "failed", error="Нет данных")
