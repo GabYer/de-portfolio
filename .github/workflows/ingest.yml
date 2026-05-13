@@ -21,9 +21,20 @@ jobs:
       - name: Установить библиотеки
         run: pip install -r requirements.txt
 
+      - name: Установить psql
+        run: sudo apt-get install -y postgresql-client
+
+      - name: Запустить миграции БД
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          psql "$DATABASE_URL" -f sql/migrations/001_init_schemas.sql
+          echo "Миграции выполнены"
+
       - name: Запустить ingestion
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           cd ingestion
           python run_all.py
+          echo "Ингестинг завершен"
