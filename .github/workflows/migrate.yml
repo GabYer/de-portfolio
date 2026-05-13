@@ -1,0 +1,26 @@
+name: Database Migration
+
+on:
+  workflow_dispatch:
+    inputs:
+      migration:
+        description: 'Какой файл запустить'
+        required: true
+        default: '001_init_schemas.sql'
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Установить psql
+        run: sudo apt-get install -y postgresql-client
+
+      - name: Запустить миграцию
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          echo "Запускаем: sql/migrations/${{ github.event.inputs.migration }}"
+          psql "$DATABASE_URL" -f "sql/migrations/${{ github.event.inputs.migration }}"
+          echo "Миграция выполнена успешно"
