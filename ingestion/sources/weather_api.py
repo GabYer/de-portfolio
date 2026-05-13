@@ -1,5 +1,6 @@
 import requests
 import logging
+import time
 from datetime import datetime, timezone
 from db import get_connection, bulk_insert, log_run
 
@@ -19,6 +20,18 @@ BASE_URL = (
     "&timezone=Asia%2FAlmaty"
 )
 
+def _fetch_with_retry(url, retries=3, timeout=30):
+    for attempt in range(1, retries + 1):
+        try:
+            resp = requests.get(url, timeout=timeout)
+            resp.raise_for_status()
+            return resp.json()
+        except Exception as e:
+            log.warning("Попытка %d/%d: %s", attempt, retries, e)
+            if attempt < retries:
+                time.sleep(5)
+    return None
+
 def ingest_weather(conn=None):
     if conn is None:
         conn = get_connection()
@@ -28,12 +41,9 @@ def ingest_weather(conn=None):
 
     for city in CITIES:
         url = BASE_URL.format(lat=city["lat"], lon=city["lon"])
-        try:
-            resp = requests.get(url, timeout=15)
-            resp.raise_for_status()
-            data = resp.json()
-        except Exception as e:
-            log.warning("weather %s ошибка: %s", city["name"], e)
+        data = _fetch_with_retry(url)
+        if not data:
+            log.warning("weather %s — пропускаем", city["name"])
             continue
 
         cur = data.get("current", {})
