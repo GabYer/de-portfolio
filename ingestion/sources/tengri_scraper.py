@@ -10,9 +10,9 @@ log = logging.getLogger(__name__)
 BASE_URL = "https://tengrinews.kz"
 
 SECTIONS = [
-    ("Новости",   "/news/"),
-    ("Экономика", "/economics_business/"),
-    ("Спорт",     "https://tengrisport.kz/"),
+    ("Экономика",    "/economics_business/"),
+    ("Казахстан",    "/kazakhstan_news/"),
+    ("Происшествия", "/crime/"),
 ]
 
 HEADERS = {
