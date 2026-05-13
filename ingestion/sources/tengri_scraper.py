@@ -10,9 +10,9 @@ log = logging.getLogger(__name__)
 BASE_URL = "https://tengrinews.kz"
 
 SECTIONS = [
+    ("Новости",      "/news/"),
     ("Экономика",    "/economics_business/"),
     ("Казахстан",    "/kazakhstan_news/"),
-    ("Происшествия", "/crime/"),
 ]
 
 HEADERS = {
@@ -20,7 +20,7 @@ HEADERS = {
 }
 
 # Любая ссылка на статью — содержит слово и цифровой ID в конце
-ARTICLE_RE = re.compile(r"/[a-z_]+-\d{4,}/?$")
+ARTICLE_RE = re.compile(r"/[a-z_][a-z0-9_-]*-\d{4,}/?$")
 
 def _parse_date(text):
     now = datetime.now(timezone.utc)
