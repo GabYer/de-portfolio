@@ -20,7 +20,7 @@
 
 ---
 
-## 🏗️ Архитектура
+## [=] Архитектура
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -67,7 +67,7 @@
 
 ---
 
-## 🛠️ Стек технологий
+## [Т] Стек технологий
 
 | Слой | Технология | Описание |
 |------|-----------|----------|
@@ -79,7 +79,7 @@
 
 ---
 
-## 📊 Источники данных
+## (->) Источники данных
 
 | # | Источник | Тип | Данные | Таблица |
 |---|---------|-----|--------|---------|
@@ -91,7 +91,7 @@
 
 ---
 
-## 🗄️ Схема базы данных
+## [DB] Схема базы данных
 
 ```
 raw.*                          staging.*
@@ -111,7 +111,7 @@ meta.*                         ├── txn_hourly
 
 ---
 
-## ⚙️ GitHub Actions Workflows
+## [CI] GitHub Actions Workflows
 
 | Workflow | Триггер | Действие |
 |----------|---------|---------|
@@ -121,7 +121,7 @@ meta.*                         ├── txn_hourly
 
 ---
 
-## 📁 Структура проекта
+## [+] Структура проекта
 
 ```
 de-portfolio/
@@ -146,7 +146,7 @@ de-portfolio/
 
 ---
 
-## 🚀 Быстрый старт
+## >_ Быстрый старт
 
 **1. Добавь секрет в GitHub**
 ```
@@ -172,7 +172,7 @@ Actions → Staging Transform → Run workflow
 
 ---
 
-## 🗺️ Roadmap
+## [->] Roadmap
 
 - [x] Multi-source ingestion (5 sources)
 - [x] PostgreSQL DWH (raw / staging / mart)
@@ -188,8 +188,14 @@ Actions → Staging Transform → Run workflow
 
 ---
 
-## 👤 Автор
+## [ @ ] Автор
 
 **GabYer** — Data Engineer, Astana, Kazakhstan
 
 [![GitHub](https://img.shields.io/badge/GitHub-GabYer-black?logo=github)](https://github.com/GabYer)
+
+[Email](mailto:gyermekbayev@gmail.com)
+[LinkedIn](https://www.linkedin.com/in/gabyer/)
+
+
+
