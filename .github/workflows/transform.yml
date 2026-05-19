@@ -1,8 +1,8 @@
 name: Staging Transform
 
 on:
-  schedule:
-    - cron: "30 */6 * * *"   # через 30 минут после ingest
+#  schedule:
+#    - cron: "30 */6 * * *"   # через 30 минут после ingest
   workflow_dispatch:
 
 jobs:

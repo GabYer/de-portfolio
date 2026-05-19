@@ -1,8 +1,8 @@
 name: Data Ingestion
 
 on:
-  schedule:
-    - cron: "0 */6 * * *"   # каждые 6 часов
+#  schedule:
+#    - cron: "0 */6 * * *"   # каждые 6 часов
   workflow_dispatch:          # кнопка ручного запуска
 
 jobs:
