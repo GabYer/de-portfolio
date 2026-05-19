@@ -5,6 +5,7 @@ from sources.nbk_forex       import ingest_forex
 from sources.weather_api     import ingest_weather
 from sources.event_generator import ingest_events
 from sources.tengri_scraper  import ingest_tengri
+from sources.kafka_producer  import ingest_kafka_producer
 
 logging.basicConfig(
     level=logging.INFO,
@@ -19,6 +20,7 @@ SOURCES = [
     ("weather",         ingest_weather),
     ("event_generator", ingest_events),
     ("tengri_scraper",  ingest_tengri),
+    ("kafka_producer",  ingest_kafka_producer),
 ]
 
 def main():
