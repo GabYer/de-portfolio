@@ -21,6 +21,7 @@ SOURCES = [
     ("event_generator", ingest_events),
     ("tengri_scraper",  ingest_tengri),
     ("kafka_producer",  ingest_kafka_producer),
+    ("kafka_consumer",  ingest_kafka_consumer),
 ]
 
 def main():
