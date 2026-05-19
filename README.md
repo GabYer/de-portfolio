@@ -26,8 +26,8 @@
 ┌─────────────────────────────────────────────────────────────────────┐
 │                         DATA SOURCES                                │
 │                                                                     │
-│  CoinGecko API   НБК Казахстан   Open-Meteo   Tengrinews.kz        │
-│  (BTC/ETH/BNB)   (KZT курсы)     (погода)     (новости)            │
+│  CoinGecko API   НБК Казахстан   Open-Meteo   Tengrinews.kz         │
+│  (BTC/ETH/BNB)   (KZT курсы)     (погода)     (новости)             │
 │                                                                     │
 │              Event Generator (Faker)                                │
 │         (транзакции / клики / IoT датчики)                          │
@@ -36,34 +36,34 @@
                          ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │                    HOMELAB SERVER                                   │
-│              Ubuntu 24.04 LTS · i5 · 16GB RAM                      │
+│              Ubuntu 24.04 LTS · i5 · 16GB RAM                       │
 │                                                                     │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │              Apache Airflow 2.9.0                           │   │
-│  │   DAG: git_pull → ingest_all_sources → staging_transform    │   │
-│  │                  Schedule: every 6 hours                    │   │
-│  └──────────────────────────┬──────────────────────────────────┘   │
+│  ┌─────────────────────────────────────────────────────────────┐    │
+│  │              Apache Airflow 2.9.0                           │    │
+│  │   DAG: git_pull → ingest_all_sources → staging_transform    │    │
+│  │                  Schedule: every 6 hours                    │    │
+│  └──────────────────────────┬──────────────────────────────────┘    │
 │                             │                                       │
-│  ┌──────────────────────────▼──────────────────────────────────┐   │
-│  │                  Apache Kafka                               │   │
-│  │   topics: transactions · clickstream · iot_sensors          │   │
-│  │   Producer → Kafka → Consumer → Neon PostgreSQL             │   │
-│  └─────────────────────────────────────────────────────────────┘   │
+│  ┌──────────────────────────▼──────────────────────────────────┐    │
+│  │                  Apache Kafka                               │    │
+│  │   topics: transactions · clickstream · iot_sensors          │    │
+│  │   Producer → Kafka → Consumer → Neon PostgreSQL             │    │
+│  └─────────────────────────────────────────────────────────────┘    │
 └────────────────────────┬────────────────────────────────────────────┘
                          │
                          ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │                PostgreSQL DWH — Neon.tech                           │
 │                                                                     │
-│  ┌──────────┐    ┌───────────┐    ┌──────────────────────────┐     │
-│  │  raw.*   │ →  │ staging.* │ →  │         mart.*           │     │
-│  │          │    │           │    │                          │     │
-│  │ as-is    │    │ cleaned   │    │ daily_crypto_kzt         │     │
-│  │ data     │    │ deduped   │    │ forex_trend              │     │
-│  │          │    │ typed     │    │ txn_hourly               │     │
-│  └──────────┘    └───────────┘    │ fraud_signals            │     │
-│                                   │ news_by_category         │     │
-│  meta.pipeline_runs (logs)        └──────────────────────────┘     │
+│  ┌──────────┐    ┌───────────┐    ┌──────────────────────────┐      │
+│  │  raw.*   │ →  │ staging.* │ →  │         mart.*           │      │
+│  │          │    │           │    │                          │      │
+│  │ as-is    │    │ cleaned   │    │ daily_crypto_kzt         │      │
+│  │ data     │    │ deduped   │    │ forex_trend              │      │
+│  │          │    │ typed     │    │ txn_hourly               │      │
+│  └──────────┘    └───────────┘    │ fraud_signals            │      │
+│                                   │ news_by_category         │      │
+│  meta.pipeline_runs (logs)        └──────────────────────────┘      │
 └────────────────────────┬────────────────────────────────────────────┘
                          │
                          ▼
@@ -71,7 +71,7 @@
 │              Apache Superset — Railway.app                          │
 │                                                                     │
 │  📈 Крипто в KZT   💱 Курсы валют   🛒 Транзакции                  │
-│  📰 Новости КЗ     🚨 Fraud Signals                                 │
+│  📰 Новости КЗ     🚨 Fraud Signals                                │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
