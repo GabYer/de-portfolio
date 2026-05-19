@@ -6,6 +6,7 @@ from sources.weather_api     import ingest_weather
 from sources.event_generator import ingest_events
 from sources.tengri_scraper  import ingest_tengri
 from sources.kafka_producer  import ingest_kafka_producer
+from sources.kafka_consumer  import ingest_kafka_consumer
 
 logging.basicConfig(
     level=logging.INFO,
