@@ -1,136 +1,154 @@
 ```
-                        /$$$$$$            /$$     /$$     /$$                 
-                       /$$__  $$          | $$    |  $$   /$$/                 
-                      | $$  \__/  /$$$$$$ | $$$$$$$\  $$ /$$//$$$$$$   /$$$$$$ 
-                      | $$ /$$$$ |____  $$| $$__  $$\  $$$$//$$__  $$ /$$__  $$
-                      | $$|_  $$  /$$$$$$$| $$  \ $$ \  $$/| $$$$$$$$| $$  \__/
-                      | $$  \ $$ /$$__  $$| $$  | $$  | $$ | $$_____/| $$      
-                      |  $$$$$$/|  $$$$$$$| $$$$$$$/  | $$ |  $$$$$$$| $$      
-                       \______/  \_______/|_______/   |__/  \_______/|__/      
+                    /$$$$$$            /$$     /$$     /$$                 
+                   /$$__  $$          | $$    |  $$   /$$/                 
+                  | $$  \__/  /$$$$$$ | $$$$$$$\  $$ /$$//$$$$$$   /$$$$$$ 
+                  | $$ /$$$$ |____  $$| $$__  $$\  $$$$//$$__  $$ /$$__  $$
+                  | $$|_  $$  /$$$$$$$| $$  \ $$ \  $$/| $$$$$$$$| $$  \__/
+                  | $$  \ $$ /$$__  $$| $$  | $$  | $$ | $$_____/| $$      
+                  |  $$$$$$/|  $$$$$$$| $$$$$$$/  | $$ |  $$$$$$$| $$      
+                   \______/  \_______/|_______/   |__/  \_______/|__/      
 ```
 
 # 🇰🇿 Kazakhstan Data Engineering Portfolio
 
-> **End-to-end data pipeline** — автоматический сбор данных из 7 источников,
-> real-time streaming через Apache Kafka, PostgreSQL DWH с 3-слойной архитектурой,
-> Apache Airflow оркестрация на homelab сервере и BI дашборды онлайн.
+> **End-to-end data platform** — real-time Binance streaming, 8 data sources,
+> PostgreSQL DWH, Apache Kafka, ClickHouse OLAP, Airflow orchestration,
+> Grafana monitoring — all running on a homelab server, publicly accessible via **gabyer.dev**
 
-[![Data Ingestion](https://github.com/GabYer/de-portfolio/actions/workflows/ingest.yml/badge.svg)](https://github.com/GabYer/de-portfolio/actions/workflows/ingest.yml)
-[![Staging Transform](https://github.com/GabYer/de-portfolio/actions/workflows/transform.yml/badge.svg)](https://github.com/GabYer/de-portfolio/actions/workflows/transform.yml)
+[![Airflow](https://img.shields.io/badge/Airflow-airflow.gabyer.dev-017CEE?logo=apacheairflow)](https://airflow.gabyer.dev)
+[![Grafana](https://img.shields.io/badge/Grafana-grafana.gabyer.dev-F46800?logo=grafana)](https://grafana.gabyer.dev)
+[![Kafka](https://img.shields.io/badge/Kafka-kafka.gabyer.dev-231F20?logo=apachekafka)](https://kafka.gabyer.dev)
+[![ClickHouse](https://img.shields.io/badge/ClickHouse-clickhouse.gabyer.dev-FFCC01?logo=clickhouse)](https://clickhouse.gabyer.dev)
 
 ---
 
-## [=] Архитектура
+## 🏗️ Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                         DATA SOURCES                                │
 │                                                                     │
-│  CoinGecko API   НБК Казахстан   Open-Meteo   Tengrinews.kz         │
-│  (BTC/ETH/BNB)   (KZT курсы)     (погода)     (новости)             │
+│  CoinGecko   НБК Kazakhstan   Open-Meteo   Tengrinews.kz            │
+│  REST API      REST API        REST API      Web Scraping           │
 │                                                                     │
-│              Event Generator (Faker)                                │
-│         (транзакции / клики / IoT датчики)                          │
-└────────────────────────┬────────────────────────────────────────────┘
-                         │  Python ingestion scripts
-                         ▼
+│         Faker Event Generator          Binance WebSocket            │
+│     (transactions/clicks/IoT)        (BTC/ETH/BNB/SOL/XRP)         │
+└──────────────┬──────────────────────────────┬───────────────────────┘
+               │                              │ ~70 trades/sec
+               ▼                              ▼
+┌──────────────────────────┐    ┌─────────────────────────────────────┐
+│   HOMELAB SERVER         │    │         CLICKHOUSE OLAP             │
+│   Ubuntu 24.04 · i5      │    │                                     │
+│   16GB RAM · 500Mb/s     │    │  trading.binance_trades             │
+│                          │    │  trading.mv_vwap_1min (MAT VIEW)    │
+│  ┌─────────────────────┐ │    │  trading.mv_buysell_1min (MAT VIEW) │
+│  │  Apache Airflow     │ │    └─────────────────────────────────────┘
+│  │  DAG every 6 hours  │ │
+│  │  git_pull           │ │
+│  │  ingest_all_sources │ │
+│  │  binance_realtime   │ │
+│  │  staging_transform  │ │
+│  └─────────────────────┘ │
+│                          │
+│  ┌─────────────────────┐ │
+│  │   Apache Kafka      │ │
+│  │   transactions      │ │
+│  │   clickstream       │ │
+│  │   iot_sensors       │ │
+│  └─────────────────────┘ │
+└──────────────┬───────────┘
+               │
+               ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                    HOMELAB SERVER                                   │
-│              Ubuntu 24.04 LTS · i5 · 16GB RAM                       │
+│                  PostgreSQL DWH — Neon.tech                         │
 │                                                                     │
-│  ┌─────────────────────────────────────────────────────────────┐    │
-│  │              Apache Airflow 2.9.0                           │    │
-│  │   DAG: git_pull → ingest_all_sources → staging_transform    │    │
-│  │                  Schedule: every 6 hours                    │    │
-│  └──────────────────────────┬──────────────────────────────────┘    │
-│                             │                                       │
-│  ┌──────────────────────────▼──────────────────────────────────┐    │
-│  │                  Apache Kafka                               │    │
-│  │   topics: transactions · clickstream · iot_sensors          │    │
-│  │   Producer → Kafka → Consumer → Neon PostgreSQL             │    │
-│  └─────────────────────────────────────────────────────────────┘    │
-└────────────────────────┬────────────────────────────────────────────┘
-                         │
-                         ▼
+│  raw.*  →  staging.*  →  mart.*          meta.pipeline_runs         │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │
+               ┌───────────────┴───────────────┐
+               ▼                               ▼
+┌──────────────────────┐         ┌─────────────────────────┐
+│   Apache Superset    │         │        Grafana           │
+│   Railway.app        │         │   grafana.gabyer.dev     │
+│   BI Dashboards      │         │   Pipeline Monitor       │
+│                      │         │   Binance Real-time      │
+└──────────────────────┘         └─────────────────────────┘
+               │
+               ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                PostgreSQL DWH — Neon.tech                           │
-│                                                                     │
-│  ┌──────────┐    ┌───────────┐    ┌──────────────────────────┐      │
-│  │  raw.*   │ →  │ staging.* │ →  │         mart.*           │      │
-│  │          │    │           │    │                          │      │
-│  │ as-is    │    │ cleaned   │    │ daily_crypto_kzt         │      │
-│  │ data     │    │ deduped   │    │ forex_trend              │      │
-│  │          │    │ typed     │    │ txn_hourly               │      │
-│  └──────────┘    └───────────┘    │ fraud_signals            │      │
-│                                   │ news_by_category         │      │
-│  meta.pipeline_runs (logs)        └──────────────────────────┘      │
-└────────────────────────┬────────────────────────────────────────────┘
-                         │
-                         ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│              Apache Superset — Railway.app                          │
-│                                                                     │
-│  📈 Крипто в KZT   💱 Курсы валют   🛒 Транзакции                  │
-│  📰 Новости КЗ     🚨 Fraud Signals                                │
+│              Cloudflare Tunnel — gabyer.dev                         │
+│  airflow · grafana · kafka · clickhouse — all HTTPS, no open ports  │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## [Т] Стек технологий
+## 🌐 Live Services
 
+| Service | URL | Purpose |
+|---------|-----|---------|
+| Apache Airflow | [airflow.gabyer.dev](https://airflow.gabyer.dev) | Pipeline orchestration |
+| Grafana | [grafana.gabyer.dev](https://grafana.gabyer.dev) | Monitoring & alerts |
+| Kafka UI | [kafka.gabyer.dev](https://kafka.gabyer.dev) | Stream inspection |
+| ClickHouse UI | [clickhouse.gabyer.dev](https://clickhouse.gabyer.dev) | OLAP queries |
+| Superset | [superset-production-0c30.up.railway.app](https://superset-production-0c30.up.railway.app) | BI dashboards |
 
-| Слой | Технология | Где работает |
-|------|-----------|-------------|
-| Ingestion | Python 3.12 | Homelab · Airflow container |
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technology | Where |
+|-------|-----------|-------|
+| Ingestion | Python 3.12 | Homelab · Airflow |
 | Streaming | Apache Kafka + Zookeeper | Homelab · Docker |
+| Real-time | Binance WebSocket | Homelab · Airflow |
 | Orchestration | Apache Airflow 2.9.0 | Homelab · Docker |
-| Database | PostgreSQL 16 (Neon.tech) | Cloud · FREE |
-| Migrations | psql + SQL files | GitHub Actions (manual) |
+| OLAP | ClickHouse 24.3 | Homelab · Docker |
+| DWH | PostgreSQL 16 (Neon.tech) | Cloud · FREE |
 | BI | Apache Superset | Railway.app · FREE |
+| Monitoring | Grafana | Homelab · Docker |
 | Container mgmt | Portainer CE | Homelab · Docker |
-| Remote access | Tailscale VPN | Homelab |
+| Tunnel | Cloudflare Tunnel | gabyer.dev · FREE |
+| Backup | rclone → Google Drive | Cloud · FREE |
 | CI/CD | GitHub Actions | github.com · FREE |
 
 ---
 
-## (->) Источники данных
+## 📊 Data Sources
 
-| # | Источник | Тип | Данные | Таблица |
-|---|---------|-----|--------|---------|
-| 1 | CoinGecko API | REST API | BTC, ETH, BNB цены в USD | `raw.crypto_prices` |
-| 2 | НБК Казахстан | REST API | USD/EUR/RUB/CNY/GBP → KZT | `raw.forex_rates_nbk` |
-| 3 | Open-Meteo | REST API | Погода: Астана, Алматы, Шымкент | `raw.weather_astana` |
-| 4 | Faker Generator | Event Gen | Транзакции, клики, IoT | `raw.events_*` |
-| 5 | Tengrinews.kz | Web Scraping | Новости Казахстана | `raw.tengri_news` |
+| # | Source | Type | Data | Table |
+|---|--------|------|------|-------|
+| 1 | CoinGecko API | REST API | BTC/ETH/BNB prices USD | `raw.crypto_prices` |
+| 2 | НБК Kazakhstan | REST API | USD/EUR/RUB/CNY/GBP → KZT | `raw.forex_rates_nbk` |
+| 3 | Open-Meteo | REST API | Weather: Astana/Almaty/Shymkent | `raw.weather_astana` |
+| 4 | Faker Generator | Event Gen | Transactions/clicks/IoT | `raw.events_*` |
+| 5 | Tengrinews.kz | Web Scraping | Kazakhstan news | `raw.tengri_news` |
 | 6 | Kafka Producer | Streaming | Events → Kafka topics | — |
-| 7 | Kafka Consumer | Streaming | Kafka topics → Neon | `raw.events_*` |
+| 7 | Kafka Consumer | Streaming | Kafka → Neon | `raw.events_*` |
+| 8 | Binance WebSocket | Real-time | BTC/ETH/BNB/SOL/XRP trades | `trading.binance_trades` |
 
 ---
 
-## 🌊 Kafka Streaming
+## 🌊 Real-time Streaming
 
 ```
-Faker Events
-     │
-     ▼
-kafka_producer.py
-     │
-     ├──► topic: transactions  (50 events/run)
-     ├──► topic: clickstream   (80 events/run)
-     └──► topic: iot_sensors   (30 events/run)
-                │
-                ▼
-        kafka_consumer.py
-                │
-                ├──► raw.events_transactions
-                ├──► raw.events_clickstream
-                └──► raw.events_iot_sensors
+Binance WebSocket (wss://stream.binance.com)
+        │  ~70 trades/second
+        ▼
+binance_consumer.py
+        │
+        ├──► trading.binance_trades (ReplacingMergeTree — dedup by trade_id)
+        │
+        ├──► trading.mv_vwap_1min (auto via Materialized View)
+        │    VWAP = sum(price×qty) / sum(qty) per minute per symbol
+        │
+        └──► trading.mv_buysell_1min (auto via Materialized View)
+             buy_volume vs sell_volume per minute
 ```
 
 ---
 
-## [DB] Схема базы данных
+## 🗄️ DWH Schema
 
 ```
 raw.*                          staging.*
@@ -150,28 +168,29 @@ meta.*                         ├── txn_hourly
 
 ---
 
-## ⚙️ Airflow DAG
+## ⚙️ Airflow Pipeline
 
 ```
-de_portfolio_ingestion (every 6 hours)
+de_portfolio_ingestion — every 6 hours
 │
-├── git_pull              — обновляет код с GitHub
-├── ingest_all_sources    — запускает все 7 источников
-└── staging_transform     — raw.* → staging.*
+├── git_pull              — pulls latest code from GitHub
+├── ingest_all_sources    — runs all 7 batch sources → Neon
+├── binance_realtime      — 60s Binance WebSocket → ClickHouse (~4000 trades)
+└── staging_transform     — raw.* → staging.* (dedup, clean, typed)
 ```
 
 ---
 
-## [+] Структура проекта
+## 📁 Project Structure
 
 ```
 de-portfolio/
 ├── .github/workflows/
-│   ├── ingest.yml          # manual only (Airflow заменил cron)
-│   ├── transform.yml       # manual only (Airflow заменил cron)
-│   └── migrate.yml         # ручные DDL миграции
+│   ├── ingest.yml          # manual only
+│   ├── transform.yml       # manual only
+│   └── migrate.yml         # manual DDL
 ├── dags/
-│   └── de_portfolio_ingestion.py   # Airflow DAG
+│   └── de_portfolio_ingestion.py
 ├── ingestion/
 │   ├── db.py
 │   ├── run_all.py
@@ -182,62 +201,46 @@ de-portfolio/
 │       ├── event_generator.py
 │       ├── tengri_scraper.py
 │       ├── kafka_producer.py
-│       └── kafka_consumer.py
+│       ├── kafka_consumer.py
+│       └── binance_consumer.py
 ├── sql/migrations/
 │   ├── 001_init_schemas.sql
 │   └── 002_staging_transform.sql
+├── docs/
+│   └── TECH_DEBT.md
 └── requirements.txt
 ```
 
 ---
 
-## >_ Быстрый старт
+## 🗺️ Roadmap
 
-**1. Добавь секрет в GitHub**
-```
-Settings → Secrets → Actions → New secret
-Name:  DATABASE_URL
-Value: postgresql://user:pass@host/dbname?sslmode=require
-```
-
-**2. Создай схемы БД**
-```
-Actions → Database Migration → Run workflow → 001_init_schemas.sql
-```
-
-**3. Запусти ingestion вручную**
-```
-Actions → Data Ingestion → Run workflow
-```
-
-**4. Запусти трансформации**
-```
-Actions → Staging Transform → Run workflow
-```
-
----
-
-## [->] Roadmap
-
-- [x] Multi-source ingestion (7 sources)
+- [x] Multi-source ingestion (8 sources)
 - [x] PostgreSQL DWH (raw / staging / mart)
 - [x] Apache Kafka streaming (producer + consumer)
+- [x] Binance WebSocket real-time → ClickHouse OLAP
+- [x] ClickHouse Materialized Views (VWAP, Buy/Sell pressure)
 - [x] Apache Airflow orchestration (homelab)
 - [x] Database migrations via Git
 - [x] BI Dashboards (Apache Superset)
+- [x] Grafana monitoring (pipeline + real-time)
 - [x] Homelab server (Ubuntu + Docker)
+- [x] Cloudflare Tunnel (gabyer.dev — all services public HTTPS)
+- [x] Automated backup → Google Drive
+- [ ] Binance 24/7 continuous streaming (long-running Docker service)
 - [ ] Apache Spark (batch processing)
 - [ ] dbt (transformations as code)
 - [ ] Great Expectations (data quality)
-- [ ] Grafana (pipeline monitoring)
-- [ ] Cloudflare Tunnel (public access)
+- [ ] AI Self-Healing Agent (on_failure_callback + Claude API + Telegram)
+- [ ] Portfolio website on gabyer.dev
 
 ---
 
-## [ @ ] Автор
+## 👤 Author
 
 **GabYer** — Data Engineer, Astana, Kazakhstan
 
 [![GitHub](https://img.shields.io/badge/GitHub-GabYer-black?logo=github)](https://github.com/GabYer)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-gabyer-blue?logo=linkedin)](https://www.linkedin.com/in/gabyer/)
 [![Email](https://img.shields.io/badge/Email-gyermekbayev@gmail.com-red?logo=gmail)](mailto:gyermekbayev@gmail.com)
+[![Domain](https://img.shields.io/badge/Domain-gabyer.dev-orange?logo=cloudflare)](https://gabyer.dev)
