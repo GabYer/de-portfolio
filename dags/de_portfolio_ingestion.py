@@ -11,7 +11,7 @@ default_args = {
 with DAG(
         dag_id="de_portfolio_ingestion",
         default_args=default_args,
-        description="Ingestion pipeline: 5 sources → Neon DWH",
+        description="Ingestion pipeline: 7 sources → Neon DWH + ClickHouse",
         schedule="0 */6 * * *",
         start_date=datetime(2026, 5, 18),
         catchup=False,
@@ -23,6 +23,7 @@ with DAG(
         bash_command="""
             set -e
             cd /data/de-portfolio
+            git reset --hard origin/main
             git pull origin main
         """,
     )
@@ -36,6 +37,15 @@ with DAG(
         """,
     )
 
+    binance = BashOperator(
+        task_id="binance_realtime",
+        bash_command="""
+            set -e
+            cd /data/de-portfolio/ingestion
+            python sources/binance_consumer.py
+        """,
+    )
+
     transform = BashOperator(
         task_id="staging_transform",
         bash_command="""
@@ -44,4 +54,4 @@ with DAG(
         """,
     )
 
-    git_pull >> ingest >> transform
+    git_pull >> ingest >> binance >> transform
