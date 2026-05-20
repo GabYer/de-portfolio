@@ -3,18 +3,21 @@ import json
 import logging
 import websockets
 import clickhouse_connect
+import os
+from dotenv import load_dotenv
 from datetime import datetime, timezone
 
 log = logging.getLogger(__name__)
+load_dotenv("/data/de-portfolio/.env")
 
 # Символы для отслеживания
 SYMBOLS = ["btcusdt", "ethusdt", "bnbusdt", "solusdt", "xrpusdt"]
 
-CLICKHOUSE_HOST = "100.112.75.57"
-CLICKHOUSE_PORT = 8123
-CLICKHOUSE_USER = "admin"
-CLICKHOUSE_PASS = "admin123"
-CLICKHOUSE_DB   = "trading"
+CLICKHOUSE_HOST = os.getenv("CLICKHOUSE_HOST", "100.112.75.57")
+CLICKHOUSE_PORT = int(os.getenv("CLICKHOUSE_PORT", 8123))
+CLICKHOUSE_USER = os.getenv("CLICKHOUSE_USER", "admin")
+CLICKHOUSE_PASS = os.getenv("CLICKHOUSE_PASS")
+CLICKHOUSE_DB   = os.getenv("CLICKHOUSE_DB", "trading")
 
 def get_client():
     return clickhouse_connect.get_client(
