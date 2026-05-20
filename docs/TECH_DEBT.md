@@ -1,9 +1,8 @@
 # Technical Debt
 
 ## High Priority
-
 ### Backup / Restore
-Status: OPEN
+Status: ✅ DONE
 
 Need:
 - PostgreSQL dump automation
@@ -12,6 +11,13 @@ Need:
 
 Risk:
 Data loss on SSD failure.
+
+Решение:
+- pg_dump Airflow PostgreSQL → .sql.gz
+- tar архив /data/stacks/ конфигов
+- rclone sync → Google Drive (de-homelab-backups/)
+- Cron: каждый день в 02:00
+- Retention: 7 дней локально, всё в облаке
 
 ---
 
