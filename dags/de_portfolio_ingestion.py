@@ -50,7 +50,11 @@ with DAG(
         task_id="staging_transform",
         bash_command="""
             set -e
-            psql "$DATABASE_URL" -f /data/de-portfolio/sql/migrations/002_staging_transform.sql
+            docker run --rm \
+                -v /data/de-portfolio/dbt:/dbt \
+                --env-file /data/de-portfolio/.env \
+                dbt-dbt:latest \
+                dbt run --project-dir /dbt --profiles-dir /dbt
         """,
     )
 
