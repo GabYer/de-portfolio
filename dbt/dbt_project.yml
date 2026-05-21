@@ -14,6 +14,8 @@ models:
     staging:
       +materialized: table
       +schema: staging
+      +database: neondb
     mart:
       +materialized: view
       +schema: mart
+      +database: neondb
