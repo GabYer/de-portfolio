@@ -8,6 +8,5 @@ de_portfolio:
       user: "{{ env_var('DBT_USER') }}"
       password: "{{ env_var('DBT_PASSWORD') }}"
       dbname: "{{ env_var('DBT_DBNAME') }}"
-      schema: staging
       threads: 4
       sslmode: require
