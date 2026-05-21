@@ -22,7 +22,6 @@ with DAG(
         task_id="git_pull",
         bash_command="""
             set -e
-            sudo chown -R gabyer:gabyer /data/de-portfolio
             cd /data/de-portfolio
             git reset --hard origin/main
             git pull origin main
