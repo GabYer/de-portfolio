@@ -1,0 +1,10 @@
+version: 2
+
+sources:
+  - name: raw
+    schema: raw
+    tables:
+      - name: crypto_prices
+      - name: forex_rates_nbk
+      - name: events_transactions
+      - name: tengri_news

@@ -1,0 +1,19 @@
+name: de_portfolio
+version: '1.0.0'
+config-version: 2
+
+profile: de_portfolio
+
+model-paths: ["models"]
+test-paths: ["tests"]
+target-path: "target"
+clean-targets: ["target"]
+
+models:
+  de_portfolio:
+    staging:
+      +materialized: table
+      +schema: staging
+    mart:
+      +materialized: view
+      +schema: mart
